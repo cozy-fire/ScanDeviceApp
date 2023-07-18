@@ -1,26 +1,23 @@
 package com.example.scandeviceapp
 
-import android.Manifest
-import android.R
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.StrictMode
-import android.os.StrictMode.VmPolicy
-import android.service.media.MediaBrowserService.BrowserRoot
 import android.view.View
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import com.example.scandeviceapp.databinding.ActivityMainBinding
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import java.io.BufferedReader
 import java.io.File
+import java.io.FileOutputStream
+import java.io.FileReader
+import java.lang.StringBuilder
+import java.util.Calendar
 
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
@@ -32,6 +29,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        initView()
+
         if(!XXPermissions.isGranted(this, Permission.MANAGE_EXTERNAL_STORAGE)){
             XXPermissions.with(this)
                 .permission(Permission.MANAGE_EXTERNAL_STORAGE)
@@ -41,8 +40,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     }
                 }
         } else initScanState()
-
-        initView()
     }
 
     /**
@@ -54,17 +51,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private fun initScanState() {
         // 获取默认路径，查看是否存在device_scan文件夹，若没有则创建
         val rootFile = getRootFile()
-        val continueFile = Environment.getExternalStoragePublicDirectory("$ROOT_DIR_NAME/continue.txt")
         // 查看是否存在continue文件，若存在，则直接打开对应文件的扫描界面
-        if(!continueFile.exists()){
-            continueFile.createNewFile()
-        }
-        // Test
-        val pdfFIle = Environment.getExternalStoragePublicDirectory("$ROOT_DIR_NAME/1.pdf")
-        if(!pdfFIle.exists()){
-            pdfFIle.createNewFile()
+        val continuePath = readContinueFile()
+        if(continuePath.isNotEmpty()) {
+            ScanActivity.openScanActivity(this, continuePath)
         }
         // 若不存在则在开启扫描界面时创建
+        binding.btnStartScan.isEnabled = true
     }
 
     private fun getRootFile(): File {
@@ -77,20 +70,37 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private fun initView() {
         binding.btnStartScan.setOnClickListener(this)
+
+        binding.btnStartScan.isEnabled = false
     }
 
     override fun onClick(v: View?) {
-        when(v?.id){
+        when (v?.id) {
             binding.btnStartScan.id -> {
-                val continueFile = Environment.getExternalStoragePublicDirectory("$ROOT_DIR_NAME/continue.txt")
-                val pdfFIle = Environment.getExternalStoragePublicDirectory("$ROOT_DIR_NAME/1.pdf")
-                pdfFIle.openInFileManagerActivity(this)
+                val calendar = Calendar.getInstance()
+                val year: Int = calendar.get(Calendar.YEAR)
+                val month: Int = calendar.get(Calendar.MONTH) + 1 // 月份从 0 开始，所以需要加 1
+                val day: Int = calendar.get(Calendar.DAY_OF_MONTH)
+                val hour: Int = calendar.get(Calendar.HOUR_OF_DAY)
+                val minute: Int = calendar.get(Calendar.MINUTE)
+                val second: Int = calendar.get(Calendar.SECOND)
+                val newFileName = "扫码结果_$year${month + 1}$day$hour$minute$second.xlsx"
+
+                // 创建对应.xlsx
+                createXlsxFile("${getRootFile().canonicalPath}/$newFileName")
+                // 创建continue文件
+                createContinueFile("${getRootFile().canonicalPath}/$newFileName")
+                ScanActivity.openScanActivity(this, getRootFile().canonicalPath + "/$newFileName")
             }
         }
     }
 
     companion object {
-        const val ROOT_DIR_NAME = "device_scan/"
-    }
+        @JvmStatic
+        fun openMainActivity(context: Context) {
+            val intent = Intent(context, MainActivity::class.java)
 
+            context.startActivity(intent)
+        }
+    }
 }
