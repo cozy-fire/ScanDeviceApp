@@ -4,12 +4,20 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        release {
+            storeFile file('/Users/edy/AndroidKeyStore')
+            storePassword '123456'
+            keyAlias 'key0'
+            keyPassword '123456'
+        }
+    }
     namespace 'com.example.scandeviceapp'
     compileSdk 33
 
     defaultConfig {
         applicationId "com.example.scandeviceapp"
-        minSdk 26
+        minSdk 21
         targetSdk 33
         versionCode 1
         versionName "1.0"
@@ -21,6 +29,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {

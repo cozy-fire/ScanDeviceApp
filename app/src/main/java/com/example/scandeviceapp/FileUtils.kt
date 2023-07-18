@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.BufferedReader
@@ -30,22 +32,23 @@ fun File.isExistFile(fileName: String): Boolean {
     return false
 }
 
-// 在文件管理其中打开当前文件夹
-fun File.openInFileManagerActivity(context: Context) {
-    val uri: Uri
-    val currentApiVersion = Build.VERSION.SDK_INT
-    uri = if (currentApiVersion >= 24) {
-        FileProvider.getUriForFile(context.applicationContext, "com.example.scandeviceapp.fileprovider", this)
-    } else {
-        Uri.fromFile(this)
-    }
+fun File.shareFile(context: Context) {
+    if(this.exists()){
+        val share = Intent(Intent.ACTION_SEND)
+        val uri = if (Build.VERSION.SDK_INT >= 24) {
+            FileProvider.getUriForFile(context.applicationContext, "com.example.scandeviceapp.fileprovider", this)
+        } else {
+            Uri.fromFile(this)
+        }
+        share.putExtra(Intent.EXTRA_STREAM, uri)
 
-    //调用系统文件管理器打开指定路径目录
-    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-    intent.addCategory(Intent.CATEGORY_OPENABLE)
-    intent.type = "*/*"
-    intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri);
-    context.startActivity(intent)
+        share.type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        share.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(Intent.createChooser(share, "分享文件"))
+    } else {
+        Toast.makeText(context, "文件不存在", Toast.LENGTH_SHORT).show()
+    }
 }
 
 fun createContinueFile(newFilePath: String) {

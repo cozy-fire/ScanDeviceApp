@@ -2,12 +2,14 @@ package com.example.scandeviceapp
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import com.example.scandeviceapp.databinding.ActivityMainBinding
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
@@ -22,6 +24,7 @@ import java.util.Calendar
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
     private lateinit var binding: ActivityMainBinding
+    private val bottomSheet: ShareBottomSheetDialog by lazy { initShareBottom() }
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,9 +40,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 .request { permissions, allGranted ->
                     if(allGranted){
                         initScanState()
+                        initShareBottom()
                     }
                 }
-        } else initScanState()
+        } else {
+            initScanState()
+            initShareBottom()
+        }
     }
 
     /**
@@ -60,6 +67,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding.btnStartScan.isEnabled = true
     }
 
+    private fun initShareBottom(): ShareBottomSheetDialog {
+        // 获取文件列表
+        val fileNameList = mutableListOf<String>()
+        getRootFile().listFiles()?.forEach {
+            fileNameList.add(it.name)
+        }
+        return ShareBottomSheetDialog(this, fileNameList)
+    }
+
     private fun getRootFile(): File {
         val rootFile = Environment.getExternalStoragePublicDirectory(ROOT_DIR_NAME)
         if(!rootFile.isDirectory){
@@ -70,7 +86,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private fun initView() {
         binding.btnStartScan.setOnClickListener(this)
-
+        binding.btnStartSend.setOnClickListener(this)
         binding.btnStartScan.isEnabled = false
     }
 
@@ -91,6 +107,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 // 创建continue文件
                 createContinueFile("${getRootFile().canonicalPath}/$newFileName")
                 ScanActivity.openScanActivity(this, getRootFile().canonicalPath + "/$newFileName")
+                finish()
+            }
+            binding.btnStartSend.id -> {
+                bottomSheet.show(supportFragmentManager, bottomSheet.tag)
             }
         }
     }
